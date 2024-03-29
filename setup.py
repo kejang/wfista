@@ -31,6 +31,9 @@ setuptools.setup(
     packages=setuptools.find_packages(where="."),
     python_requires=">=3.10",
     install_requires=[
+        "numpy>=1.21.0",
+        "scipy",
+        "cupy",
     ],
     include_package_data=True
 )

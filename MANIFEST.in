@@ -1,1 +1,2 @@
+include ./noncartrec/thresholding/cuda/*.cu
 include version.py
