@@ -39,6 +39,7 @@ class WaveletOperator(LinearOperator):
         )
         arr, self.coeff_slices, self.coeff_shapes = ravel_coeffs(coeffs)
         self.shape = (arr.size, np.int64(np.prod(sz_im)))
+        self.n_approx_coef = np.sum(self.coeff_shapes[0])
 
     def _matvec(self, x):
 

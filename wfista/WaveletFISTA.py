@@ -34,7 +34,7 @@ class WaveletFISTA:
         self.stream = model.stream
         self.W = wavelet_op
 
-    def run(self, data, niter, reg, lipschitz_const, init=None):
+    def run(self, data, reg, lipschitz_const, max_iter, tol=None, init=None):
 
         f = to_device_array(
             data,
@@ -63,31 +63,43 @@ class WaveletFISTA:
 
         t_old = 1.0
 
-        for _ in range(niter):
+        for iter_num in range(max_iter):
             with cupy.cuda.Device(self.gpu_id), self.stream as _:
                 proj = self.model.matvec(y)
                 res = proj - f
                 backproj = self.model.rmatvec(res)
-
+            
             with cupy.cuda.Device(self.gpu_id), self.stream as stream:
                 x_new = y - backproj / lipschitz_const
+                
+                # soft thresholding to wavelet coeffs (except approx.)
+
                 coeffs = self.W.matvec(x_new[:self.W.shape[1]])
-                coeffs = soft_thresholding(
-                    coeffs, reg, gpu_id=self.gpu_id, stream=stream
+                coeffs_h = soft_thresholding(
+                    coeffs[self.W.n_approx_coef:],
+                    reg,
+                    gpu_id=self.gpu_id,
+                    stream=stream
                 )
+                coeffs[self.W.n_approx_coef:] = coeffs_h
                 x_new[:self.W.shape[1]] = self.W.rmatvec(coeffs)
+
+            if (tol is not None):
+                with cupy.cuda.Device(self.gpu_id), self.stream as _:
+                    if cupy.linalg.norm(x_old - x_new) < tol:
+                        break
 
             t_new = (1.0 + np.sqrt(1.0 + 4.0 * t_old * t_old)) / 2.0
             wgt_new = 1.0 + (t_old - 1.0) / t_new
             wgt_old = (1.0 - t_old) / t_new
 
-            with cupy.cuda.Device(self.gpu_id), self.stream as stream:
+            with cupy.cuda.Device(self.gpu_id), self.stream as _:
                 y = wgt_new * x_new + wgt_old * x_old
                 x_old, x_new = x_new, x_old
 
             t_old, t_new = t_new, t_old
 
         if cupy.get_array_module(data) == np:
-            return from_device_array(x_old, self.gpu_id, self.stream)
+            return from_device_array(x_old, self.gpu_id, self.stream), iter_num
         else:
-            return x_old
+            return x_old, iter_num
