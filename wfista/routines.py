@@ -1,6 +1,5 @@
 import numpy as np
 import cupy
-from numpy.random import default_rng
 import logging
 
 
@@ -23,7 +22,7 @@ def clean_up_gpu(gpu_id):
         pinned_mempools[gpu_id].free_all_blocks()
 
 
-def estimate_lipschitz_constant(model, niter, seed=0):
+def estimate_lipschitz_constant(model, niter, h_x0=None, seed=0):
     """Returns Lipschitz constant using Power iteration.
 
     Args:
@@ -34,18 +33,26 @@ def estimate_lipschitz_constant(model, niter, seed=0):
     Returns:
         float: Lipschitz constant
     """
-    rng = default_rng(seed)
-    n = model.shape[1]
 
+    n = model.shape[1]
     gpu_id = model.gpu_id
     stream = model.stream
 
+    state = np.random.get_state()  # save the current state of RGN
+    np.random.seed(seed)
+
     # initialization with uniform random generator
 
-    if np.iscomplexobj(np.ones((1,), dtype=np.dtype(model.dtype))):
-        h_x0 = rng.uniform(size=(n,)) + np.array([1j])*rng.uniform(size=(n,))
-    else:
-        h_x0 = rng.uniform(size=(n,))
+    if h_x0 is None:
+        if np.iscomplexobj(np.ones((1,), dtype=np.dtype(model.dtype))):
+            h_x0 = (
+                np.random.uniform(size=(n,))
+                + np.array([1j]) * np.random.uniform(size=(n,))
+            )
+        else:
+            h_x0 = np.random.uniform(size=(n,))
+
+    np.random.set_state(state)  # restore the original state
 
     with cupy.cuda.Device(gpu_id), stream as _:
         x0 = cupy.empty((n,), dtype=model.dtype)
