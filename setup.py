@@ -35,5 +35,10 @@ setuptools.setup(
         "scipy",
         "cupy",
     ],
-    include_package_data=True
+    include_package_data=True,
+    package_data={
+        "wfista": [
+            "thresholding/cuda/*.cu",
+        ]
+    },
 )
