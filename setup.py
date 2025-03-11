@@ -2,7 +2,7 @@ import setuptools
 
 
 pkg_name = "wfista"
-pkg_version = "0.0.1"
+pkg_version = "0.0.2"
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()

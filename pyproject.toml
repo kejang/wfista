@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wfista"
-version = "0.0.1"
+version = "0.0.2"
 description = "Wavelet-FISTA"
 authors = [
     { name = "Kwang Eun Jang", email = "kejang@stanford.edu" }
